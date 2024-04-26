@@ -1,0 +1,48 @@
+---
+services:
+  homeassistant:
+    container_name: homeassistant
+    # image: homeassistant/home-assistant:stable
+    image: ghcr.io/home-assistant/home-assistant:stable
+    volumes:
+      - ${STORAGE}/homeassistant/config:/config
+      - /etc/localtime:/etc/localtime:ro
+      - /run/dbus:/run/dbus:ro
+    restart: unless-stopped
+    # ports:
+    #   - 8123:8123
+    # privileged: true
+    # network_mode: host
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.homeassistant.rule=Host(`homeassistant.${DOMAIN}`)
+      - traefik.http.routers.homeassistant.entrypoints=websecure
+      - traefik.http.routers.homeassistant.tls=true
+      - traefik.http.services.homeassistant.loadbalancer.server.port=8123
+    networks:
+      - proxy
+
+  motioneye:
+    image: ccrisan/motioneye:master-armhf # for use on arm cpu use this tag :master-amd64
+    container_name: motioneye
+    ports:
+      - 8165:8765
+      - 8181:8081
+    hostname: motioneye
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${STORAGE}/motioneye/config:/etc/motioneye
+      - ${STORAGE}/motioneye/recode:/var/lib/motioneye
+    restart: always
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.motioneye.rule=Host(`motioneye.${DOMAIN}`)
+      - traefik.http.routers.motioneye.entrypoints=websecure
+      - traefik.http.routers.motioneye.tls=true
+      - traefik.http.services.motioneye.loadbalancer.server.port=8765
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true

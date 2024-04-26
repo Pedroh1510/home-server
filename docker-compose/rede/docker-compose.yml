@@ -1,0 +1,53 @@
+---
+services:
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:latest
+    ports:
+      - '53:53/tcp'
+      - '53:53/udp'
+      - '8099:8099/tcp'
+    environment:
+      TZ: ${TZ}
+      WEBPASSWORD: ${WEBPASSWORD}
+      WEB_PORT: 8099
+    volumes:
+      - ${STORAGE}/piholeConfig:/etc/pihole
+      - ${STORAGE}/piholeDnsmasq.d:/etc/dnsmasq.d
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.pihole.rule=Host(`${SUBDOMAIN}.${DOMAIN}`)
+      - traefik.http.routers.pihole.entrypoints=websecure
+      - traefik.http.routers.pihole.tls=true
+      - traefik.http.services.pihole.loadbalancer.server.port=8099
+    networks:
+      - proxy
+
+  traefik-reverse-proxy:
+    restart: unless-stopped
+    image: traefik:latest
+    container_name: traefik-reverse-proxy
+    command:
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:81
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+      - --certificatesresolvers.letsencrypt.acme.email=${EMAIL}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+    ports:
+      - '81:81'
+      - '443:443'
+      - '8101:8080'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${STORAGE}/traefik/letsencrypt:/letsencrypt
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true

@@ -1,0 +1,24 @@
+---
+services:
+  downloader:
+    container_name: downloader
+    image: jlesage/jdownloader-2
+    volumes:
+      - ${STORAGE}/downloader/downloads:/downloads #optional
+      - ${STORAGE}/downloader/incomplete/:/incomplete-downloads #optional
+    # restart: unless-stopped
+    ports:
+      - 5800:5800
+    # labels:
+    #   - traefik.enable=true
+    #   - traefik.http.routers.downloader.rule=Host(`downloader.server.local`)
+    #   - traefik.http.routers.downloader.entrypoints=websecure
+    #   - traefik.http.routers.downloader.tls=true
+    #   - traefik.http.services.downloader.loadbalancer.server.port=5800
+    #   - traefik.docker.network=proxy
+#     networks:
+#       - proxy
+
+# networks:
+#   proxy:
+#     external: true

@@ -1,0 +1,38 @@
+---
+services:
+  semaphore:
+    container_name: semaphore
+    restart: unless-stopped
+    # ports:
+    #   - 3000:3000
+    image: semaphoreui/semaphore:latest
+    environment:
+      SEMAPHORE_DB_USER: ${DB_USER}
+      SEMAPHORE_DB_PASS: ${DB_PASS}
+      SEMAPHORE_DB_HOST: ${DB_HOST}
+      SEMAPHORE_DB_PORT: 5432
+      SEMAPHORE_DB_DIALECT: postgres
+      SEMAPHORE_DB: ${DB_SCHEMA}
+      SEMAPHORE_PLAYBOOK_PATH: /tmp/semaphore/
+      SEMAPHORE_ADMIN_PASSWORD: ${PASSWORD}
+      SEMAPHORE_ADMIN_NAME: ${USERNAME}
+      SEMAPHORE_ADMIN_EMAIL: ${ADMIN_EMAIL}
+      SEMAPHORE_ADMIN: ${USER}
+      SEMAPHORE_ACCESS_KEY_ENCRYPTION: ${ACCESS_KEY}
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.semaphore.rule=Host(`${SUBDOMAIN}.${DOMAIN}`)
+      - traefik.http.routers.semaphore.entrypoints=websecure
+      - traefik.http.routers.semaphore.tls=true
+      - traefik.http.services.semaphore.loadbalancer.server.port=3000
+    networks:
+      - proxy
+    volumes:
+      - ${STORAGE}/semaphore/inventory/:/inventory:ro
+      - ${STORAGE}/semaphore/authorized-keys/:/authorized-keys:ro
+      - ${STORAGE}/semaphore/:/teste
+      - ${STORAGE}/semaphore/config/:/etc/semaphore:rw
+
+networks:
+  proxy:
+    external: true

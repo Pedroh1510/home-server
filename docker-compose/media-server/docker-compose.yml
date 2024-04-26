@@ -1,0 +1,245 @@
+---
+services:
+  sonarr:
+    image: linuxserver/sonarr
+    container_name: sonarr
+    # network_mode: "service:vpn"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - UMASK_SET=022 #optional
+    volumes:
+      - ${SSD}/sonarr:/config
+      - ${DATA}/tvseries:/tv
+      - ${DATA}/downloads:/downloads
+      - ${DATA}/downloader/downloads:/downloaders
+    # ports:
+    #   - 8989:8989
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.30'
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.sonarr.rule=Host(`sonarr.${DOMAIN}`)
+      # - traefik.http.routers.sonarr.entrypoints=web
+      - traefik.http.routers.sonarr.entrypoints=websecure
+      - traefik.http.routers.sonarr.tls=true
+      - traefik.http.services.sonarr.loadbalancer.server.port=8989
+    networks:
+      - proxy
+      - mediaServer
+
+  radarr:
+    image: linuxserver/radarr
+    container_name: radarr
+    # network_mode: "service:vpn"
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - UMASK_SET=022 #optional
+    volumes:
+      - ${SSD}/radarr:/config
+      - ${DATA}/movies:/movies
+      - ${DATA}/downloads:/downloads
+      - ${DATA}/downloader:/downloaders
+    # ports:
+    #   - 7878:7878
+    deploy:
+      resources:
+        limits:
+          cpus: '0.30'
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.radarr.rule=Host(`radarr.${DOMAIN}`)
+      - traefik.http.routers.radarr.entrypoints=websecure
+      - traefik.http.routers.radarr.tls=true
+      - traefik.http.services.radarr.loadbalancer.server.port=7878
+    networks:
+      - proxy
+      - mediaServer
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    # network_mode: "service:vpn"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - WEBUI_PORT=8080
+    volumes:
+      - ${SSD}/qbittorrent:/config
+      - ${DATA}/downloads:/downloads
+    # ports:
+    #   - 8080:8080
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.30'
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.qbittorrent.rule=Host(`qbittorrent.${DOMAIN}`)
+      - traefik.http.services.qbittorrent.loadbalancer.server.port=8080
+      - traefik.http.services.qbittorrent.loadbalancer.passhostheader=false
+      - traefik.http.routers.qbittorrent.entrypoints=websecure
+      - traefik.http.routers.qbittorrent.tls=true
+    depends_on:
+      - vpn
+    networks:
+      - proxy
+      - mediaServer
+
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    # network_mode: "service:vpn"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${SSD}/jellyfin:/config
+      - ${DATA}/movies:/data/movies
+      - ${DATA}/tvseries:/data/tvshows
+      - ${DATA}/music:/data/music
+      - ${DATA}/downloader/downloads:/downloaders
+    ports:
+      - 8096:8096
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.jellyfin.rule=Host(`jellyfin.${DOMAIN}`)
+      - traefik.http.services.jellyfin.loadbalancer.server.port=8096
+      - traefik.http.routers.jellyfin.entrypoints=websecure
+      - traefik.http.routers.jellyfin.tls=true
+    networks:
+      - proxy
+      - mediaServer
+
+  rss:
+    image: pedroh1510/rss:latest
+    # build: .
+    container_name: rss
+    network_mode: 'service:vpn'
+    # ports:
+    #   - 4000:4000
+    environment:
+      - port=4000
+      - host=rss.${DOMAIN}:443
+      - TZ=${TZ}
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}:5432/${DB_SCHEMA}
+      - user_torrent=${TORRENT_USER}
+      - pass_torrent=${TORRENT_PASS}
+    volumes:
+      - ${DATA}/rss:/app/prisma/
+      - ${DATA}/downloads:/app/downloads
+    restart: unless-stopped
+    depends_on:
+      - database
+      - vpn
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+    # networks:
+    #   - proxy
+    #   - mediaServer
+
+  database:
+    image: 'postgres'
+    network_mode: 'service:vpn'
+    container_name: database
+    restart: unless-stopped
+    # ports:
+    #   - 5432:5432
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASS}
+    volumes:
+      - ${DATA}/database:/var/lib/postgresql/data/
+    # networks:
+    #   - mediaServer
+
+  vpn:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    ports:
+      # - 8080:8080
+      - 4000:4000
+      # - 8989:8989
+      - 5432:5432
+      - 9117:9117
+      # - 7878:7878
+    #   - 54435:54435
+    #   - 54435:54435/udp # port generated in gluten/info/forwarded_port
+    volumes:
+      - ${SSD}/gluetun/custom.conf:/gluetun/custom.conf:ro
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - TZ=${TZ}
+      - VPN_SERVICE_PROVIDER=protonvpn
+      - OPENVPN_USER=${OPENVPN_USER}
+      - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
+      - SERVER_COUNTRIES=Netherlands
+      - FREE_ONLY=on
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.rss-router.rule=Host(`rss.${DOMAIN}`)
+      - traefik.http.routers.rss-router.entrypoints=websecure
+      - traefik.http.routers.rss-router.tls=true
+      # - traefik.http.routers.qbittorrent-router.rule=Host(`qbittorrent.${DOMAIN}`)
+      # - traefik.http.services.qbittorrent-router.loadbalancer.server.port=8080
+      # - traefik.http.routers.qbittorrent-router.entrypoints=websecure
+      # - traefik.http.routers.qbittorrent-router.tls=true
+    networks:
+      - proxy
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    container_name: lidarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${SSD}/lidarr:/config
+      - ${DATA}/downloads:/downloads
+      - ${DATA}/music:/music
+    # ports:
+    #   - 8686:8686
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.lidarr.rule=Host(`lidarr.${DOMAIN}`)
+      - traefik.http.routers.lidarr.entrypoints=websecure
+      - traefik.http.routers.lidarr.tls=true
+      - traefik.http.services.lidarr.loadbalancer.server.port=8686
+    networks:
+      - proxy
+
+  jackett:
+    image: lscr.io/linuxserver/jackett:latest
+    container_name: jackett
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - AUTO_UPDATE=true #optional
+    # ports:
+    #   - 9117:9117
+    network_mode: 'service:vpn'
+    restart: unless-stopped
+
+networks:
+  proxy:
+    external: true
+  mediaServer:

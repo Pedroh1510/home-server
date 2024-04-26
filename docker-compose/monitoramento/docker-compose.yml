@@ -1,0 +1,126 @@
+version: '3.8'
+services:
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    user: 472:1000
+    # ports:
+    #   - 3000:3000
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.grafana.rule=Host(`grafana.${DOMAIN}`)
+      - traefik.http.routers.grafana.entrypoints=websecure
+      - traefik.http.routers.grafana.tls=true
+      - traefik.http.services.grafana.loadbalancer.server.port=3000
+    volumes:
+      - ${STORAGE}/grafana/data/:/var/lib/grafana
+    networks:
+      - proxy
+      - monitoramento
+
+  loki:
+    image: grafana/loki:2.9.2
+    container_name: loki
+    restart: unless-stopped
+    # ports:
+    #   - '3100:3100'
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ${STORAGE}/config/loki/loki.yml:/etc/loki/local-config.yaml
+    networks:
+      - monitoramento
+
+  speedtest-tracker:
+    image: lscr.io/linuxserver/speedtest-tracker:latest
+    container_name: speedtest-tracker
+    # ports:
+    #     - 8105:80
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - DB_CONNECTION=sqlite
+      - PUBLIC_DASHBOARD=true
+    volumes:
+      - ${STORAGE}/speedtest:/config
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.speedtest.rule=Host(`speedtest.${DOMAIN}`)
+      - traefik.http.routers.speedtest.entrypoints=websecure
+      - traefik.http.routers.speedtest.tls=true
+      - traefik.http.services.speedtest.loadbalancer.server.port=80
+    networks:
+      - proxy
+  heimdall:
+    image: lscr.io/linuxserver/heimdall:latest
+    container_name: heimdall
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Sao_Paulo
+    volumes:
+      - ${STORAGE}/heimdall/config:/config
+    # ports:
+    #   - 8106:80
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.heimdall.rule=Host(`heimdall.${DOMAIN}`)
+      - traefik.http.routers.heimdall.entrypoints=websecure
+      - traefik.http.routers.heimdall.tls=true
+      - traefik.http.services.heimdall.loadbalancer.server.port=80
+    networks:
+      - proxy
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: always
+
+  telegraf:
+    image: telegraf
+    container_name: telegraf
+    restart: always
+    user: telegraf:985
+    # user: root
+    hostname: homelab
+    # privileged: true
+    # command: apt-get update && apt-get install -y smartmontools lm-sensors && telegraf
+    volumes:
+      - ${STORAGE}/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro # - /dev/sda:/dev/sda:rw
+    depends_on:
+      - influxdb
+    # ports:
+    # - '8125:8125'
+    networks:
+      - monitoramento
+
+  influxdb:
+    image: influxdb:2-alpine
+    container_name: influxdb
+    restart: always
+    # ports:
+    #   - '8086:8086'
+    volumes:
+      - ${STORAGE}/influx/influxdb:/var/lib/influxdb2
+      - ${STORAGE}/influx/config:/etc/influxdb
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.influxdb.rule=Host(`influxdb.${DOMAIN}`)
+      - traefik.http.routers.influxdb.entrypoints=websecure
+      - traefik.http.routers.influxdb.tls=true
+      - traefik.http.services.influxdb.loadbalancer.server.port=8086
+    networks:
+      - proxy
+      - monitoramento
+
+networks:
+  proxy:
+    external: true
+  monitoramento:
+    external: false
