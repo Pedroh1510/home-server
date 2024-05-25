@@ -135,7 +135,7 @@ services:
     #   - 4000:4000
     environment:
       - port=4000
-      - host=rss.${DOMAIN}:443
+      - host=rss.${DOMAIN}
       - TZ=${TZ}
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}:5432/${DB_SCHEMA}
       - user_torrent=${TORRENT_USER}
