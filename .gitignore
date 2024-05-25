@@ -1,4 +1,4 @@
 data
 tabby
 .env*
-!.env.example
+!.env.*.example
