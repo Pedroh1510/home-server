@@ -3,6 +3,8 @@ services:
   pihole:
     container_name: pihole
     image: pihole/pihole:latest
+    security_opt:
+      - no-new-privileges:true
     ports:
       - '53:53/tcp'
       - '53:53/udp'
@@ -17,7 +19,7 @@ services:
     restart: unless-stopped
     labels:
       - traefik.enable=true
-      - traefik.http.routers.pihole.rule=Host(`${SUBDOMAIN}.${DOMAIN}`)
+      - traefik.http.routers.pihole.rule=Host(`pihole.${DOMAIN}`)
       - traefik.http.routers.pihole.entrypoints=websecure
       - traefik.http.routers.pihole.tls=true
       - traefik.http.services.pihole.loadbalancer.server.port=8099
@@ -28,23 +30,48 @@ services:
     restart: unless-stopped
     image: traefik:latest
     container_name: traefik-reverse-proxy
-    command:
-      - --api.insecure=true
-      - --providers.docker=true
-      - --providers.docker.exposedbydefault=false
-      - --entrypoints.web.address=:81
-      - --entrypoints.websecure.address=:443
-      - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
-      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
-      - --certificatesresolvers.letsencrypt.acme.email=${EMAIL}
-      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      TRAEFIK_DASHBOARD_CREDENTIALS: ${TRAEFIK_DASHBOARD_CREDENTIALS}
+      CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN}
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.traefik.entrypoints=web'
+      - 'traefik.http.routers.traefik.rule=Host(`traefik-dashboard.${DOMAIN}`)'
+      # - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_DASHBOARD_CREDENTIALS}"
+      - 'traefik.http.middlewares.traefik-https-redirect.redirectscheme.scheme=https'
+      - 'traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https'
+      - 'traefik.http.routers.traefik.middlewares=traefik-https-redirect'
+      - 'traefik.http.routers.traefik-secure.entrypoints=websecure'
+      - 'traefik.http.routers.traefik-secure.rule=Host(`traefik-dashboard.${DOMAIN}`)'
+      # - "traefik.http.routers.traefik-secure.middlewares=traefik-auth"
+      - 'traefik.http.routers.traefik-secure.tls=true'
+      - 'traefik.http.routers.traefik-secure.tls.certresolver=cloudflare'
+      - 'traefik.http.routers.traefik-secure.tls.domains[0].main=${DOMAIN}'
+      - 'traefik.http.routers.traefik-secure.tls.domains[0].sans=*.${DOMAIN}'
+      - 'traefik.http.routers.traefik-secure.service=api@internal'
+    # command:
+    # - --api.insecure=true
+    # - --providers.docker=true
+    # - --providers.docker.exposedbydefault=false
+    # - --entrypoints.web.address=:80
+    # - --entrypoints.websecure.address=:443
+    # - --entrypoints.web.http.redirections.entryPoint.to=websecure
+    # - --entrypoints.web.http.redirections.entryPoint.scheme=https
+    # - --entrypoints.web.http.redirections.entrypoint.permanent=true
+    # - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
+    # - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+    # - --certificatesresolvers.letsencrypt.acme.email=${EMAIL}
+    # - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
     ports:
-      - '81:81'
+      - '80:80'
       - '443:443'
       - '8101:8080'
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ${STORAGE}/traefik/letsencrypt:/letsencrypt
+      - ${STORAGE}/traefik/config/traefik.yml:/traefik.yml:ro
+      - ${STORAGE}/traefik/config/acme.json:/acme.json
     networks:
       - proxy
 
