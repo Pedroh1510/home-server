@@ -1,0 +1,52 @@
+networks:
+  dns_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.23.0.0/16
+  proxy:
+    external: true
+
+services:
+  pihole:
+    container_name: pihole
+    hostname: pihole
+    image: pihole/pihole:latest
+    networks:
+      dns_net:
+        ipv4_address: 172.23.0.7
+      proxy:
+        ipv4_address: 172.19.0.2
+    ports:
+      - '53:53/tcp'
+      - '53:53/udp'
+      - '8099:80/tcp'
+    environment:
+      TZ: ${TZ}
+      WEBPASSWORD: ${WEBPASSWORD}
+      PIHOLE_DNS_: '172.23.0.8#5053'
+    volumes:
+      - ${STORAGE}/piholeConfig:/etc/pihole
+      - ${STORAGE}/piholeDnsmasq.d:/etc/dnsmasq.d
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.pihole.rule=Host(`pihole.${DOMAIN}`)
+      - traefik.http.routers.pihole.entrypoints=websecure
+      - traefik.http.routers.pihole.tls=true
+      - traefik.http.services.pihole.loadbalancer.server.port=80
+      - traefik.docker.network=proxy
+  unbound:
+    container_name: unbound
+    image: mvance/unbound-rpi:latest
+    networks:
+      dns_net:
+        ipv4_address: 172.23.0.8
+    volumes:
+      - ${STORAGE}/unbound:/opt/unbound/etc/unbound
+    ports:
+      - '5053:53/tcp'
+      - '5053:53/udp'
+    healthcheck:
+      test: ['NONE']
+    restart: unless-stopped
