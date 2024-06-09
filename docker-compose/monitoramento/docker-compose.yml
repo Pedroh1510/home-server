@@ -1,7 +1,7 @@
 ---
 services:
   grafana:
-    image: grafana/grafana
+    image: grafana/grafana:10.4.3
     container_name: grafana
     restart: unless-stopped
     security_opt:
@@ -32,6 +32,7 @@ services:
     volumes:
       - ${STORAGE}/config/loki/loki.yml:/etc/loki/local-config.yaml
     networks:
+      - proxy
       - monitoramento
 
   speedtest-tracker:
@@ -75,20 +76,13 @@ services:
       - traefik.http.services.heimdall.loadbalancer.server.port=80
     networks:
       - proxy
-  watchtower:
-    image: containrrr/watchtower
-    container_name: watchtower
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    restart: always
-    environment:
-      - WATCHTOWER_CLEANUP=true
 
   telegraf:
     image: telegraf
     container_name: telegraf
     restart: always
     user: telegraf:985
+    privileged: true
     # user: root
     hostname: homelab
     # privileged: true
@@ -96,6 +90,13 @@ services:
     volumes:
       - ${STORAGE}/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro # - /dev/sda:/dev/sda:rw
+      - /proc:/host/proc:ro
+      - /var/run/utmp:/var/run/utmp:ro
+      - /dev:/dev:ro
+      - /srv:/srv:ro
+    environment:
+      - HOST_PROC=/host/proc
+      - HOST_PROC_MOUNTINFO=/proc/1
     depends_on:
       - influxdb
     # ports:
@@ -122,6 +123,37 @@ services:
     networks:
       - proxy
       - monitoramento
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:1-alpine
+    container_name: uptime-kuma
+    volumes:
+      - ${STORAGE}/uptime:/app/data
+    restart: always
+    # ports:
+    #   - 3001:3001
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.uptime.rule=Host(`uptime.${DOMAIN}`)
+      - traefik.http.routers.uptime.entrypoints=websecure
+      - traefik.http.routers.uptime.tls=true
+      - traefik.http.services.uptime.loadbalancer.server.port=3001
+    networks:
+      - proxy
+
+  diun:
+    image: crazymax/diun:latest
+    command: serve
+    container_name: diun
+    volumes:
+      - ${STORAGE}/dium/data:/data
+      - ${STORAGE}/dium/diun.yml:/diun.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - TZ=${TZ}
+      - LOG_LEVEL=info
+      - LOG_JSON=false
+    restart: always
 
 networks:
   proxy:
