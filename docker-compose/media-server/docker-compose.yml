@@ -126,89 +126,98 @@ services:
       - proxy
       - mediaServer
 
-  rss:
-    image: pedroh1510/rss:latest
-    # build: .
-    container_name: rss
-    network_mode: 'service:vpn'
-    # ports:
-    #   - 4000:4000
-    environment:
-      - port=4000
-      - host=rss.${DOMAIN}
-      - TZ=${TZ}
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}:5432/${DB_SCHEMA}
-      - user_torrent=${TORRENT_USER}
-      - pass_torrent=${TORRENT_PASS}
-    volumes:
-      - ${DATA}/rss:/app/prisma/
-      - ${DATA}/downloads:/app/downloads
-    restart: unless-stopped
-    depends_on:
-      - database
-      - vpn
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-    # networks:
-    #   - proxy
-    #   - mediaServer
+  # rss:
+  #   image: pedroh1510/rss:latest
+  #   # build: .
+  #   container_name: rss
+  #   # network_mode: 'service:vpn'
+  #   # ports:
+  #   #   - 4000:4000
+  #   environment:
+  #     - port=4000
+  #     - host=rss.${DOMAIN}
+  #     - TZ=${TZ}
+  #     - DATABASE_URL=postgresql://${DB_USER}:${DB_PASS}@${DB_HOST}:5432/${DB_SCHEMA}
+  #     - user_torrent=${TORRENT_USER}
+  #     - pass_torrent=${TORRENT_PASS}
+  #   volumes:
+  #     - ${DATA}/rss/db:/app/prisma/
+  #     - ${DATA}/rss/downloads:/app/downloads
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - database
+  #     - vpn
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '1'
+  #   networks:
+  #     - proxy
+  #     - mediaServer
+  #   labels:
+  #     - traefik.enable=true
+  #     - traefik.http.routers.rss-router.rule=Host(`rss.${DOMAIN}`)
+  #     - traefik.http.routers.rss-router.entrypoints=websecure
+  #     - traefik.http.routers.rss-router.tls=true
+  #     - traefik.http.services.rss-router.loadbalancer.server.port=4000
 
   database:
     image: 'postgres'
-    network_mode: 'service:vpn'
+    # network_mode: 'service:vpn'
     container_name: database
     restart: unless-stopped
-    # ports:
-    #   - 5432:5432
+    ports:
+      - 5432:5432
     environment:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASS}
     volumes:
       - ${DATA}/database:/var/lib/postgresql/data/
-    # networks:
-    #   - mediaServer
-
-  vpn:
-    image: qmcgaw/gluetun:latest
-    container_name: gluetun
-    restart: unless-stopped
-    cap_add:
-      - NET_ADMIN
-    ports:
-      # - 8080:8080
-      - 4000:4000
-      # - 8989:8989
-      - 5432:5432
-      - 9117:9117
-      # - 7878:7878
-    #   - 54435:54435
-    #   - 54435:54435/udp # port generated in gluten/info/forwarded_port
-    volumes:
-      - ${SSD}/gluetun/custom.conf:/gluetun/custom.conf:ro
-    devices:
-      - /dev/net/tun:/dev/net/tun
-    environment:
-      - TZ=${TZ}
-      - VPN_SERVICE_PROVIDER=protonvpn
-      - OPENVPN_USER=${OPENVPN_USER}
-      - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
-      - SERVER_COUNTRIES=Netherlands
-      - FREE_ONLY=on
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.rss-router.rule=Host(`rss.${DOMAIN}`)
-      - traefik.http.routers.rss-router.entrypoints=websecure
-      - traefik.http.routers.rss-router.tls=true
-      - traefik.http.services.rss-router.loadbalancer.server.port=4000
-      - traefik.docker.network=proxy
-      # - traefik.http.routers.qbittorrent-router.rule=Host(`qbittorrent.${DOMAIN}`)
-      # - traefik.http.services.qbittorrent-router.loadbalancer.server.port=8080
-      # - traefik.http.routers.qbittorrent-router.entrypoints=websecure
-      # - traefik.http.routers.qbittorrent-router.tls=true
     networks:
       - proxy
+      - mediaServer
+
+  # vpn:
+  #   image: qmcgaw/gluetun:latest
+  #   container_name: gluetun
+  #   restart: unless-stopped
+  #   cap_add:
+  #     - NET_ADMIN
+  #   ports:
+  #     # - 8080:8080
+  #     - 4000:4000
+  #     # - 8989:8989
+  #     - 5432:5432
+  #     - 9117:9117
+  #     - 6379:6379
+  #     # - 7878:7878
+  #   #   - 54435:54435
+  #   #   - 54435:54435/udp # port generated in gluten/info/forwarded_port
+  #   volumes:
+  #     - ${SSD}/gluetun/custom.conf:/gluetun/custom.conf:ro
+  #   devices:
+  #     - /dev/net/tun:/dev/net/tun
+  #   environment:
+  #     - TZ=${TZ}
+  #     - VPN_SERVICE_PROVIDER=protonvpn
+  #     - OPENVPN_USER=${OPENVPN_USER}
+  #     - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
+  #     - SERVER_COUNTRIES=Netherlands
+  #     - FREE_ONLY=on
+  #   labels:
+  #     - traefik.enable=true
+  #     - traefik.http.routers.rss-router.rule=Host(`rss.${DOMAIN}`)
+  #     - traefik.http.routers.rss-router.entrypoints=websecure
+  #     - traefik.http.routers.rss-router.tls=true
+  #     - traefik.http.services.rss-router.loadbalancer.server.port=4000
+  #     - traefik.docker.network=proxy
+  #     # - traefik.http.routers.qbittorrent-router.rule=Host(`qbittorrent.${DOMAIN}`)
+  #     # - traefik.http.services.qbittorrent-router.loadbalancer.server.port=8080
+  #     # - traefik.http.routers.qbittorrent-router.entrypoints=websecure
+  #     # - traefik.http.routers.qbittorrent-router.tls=true
+  #   networks:
+  #     - proxy
+
   lidarr:
     image: lscr.io/linuxserver/lidarr:latest
     container_name: lidarr
@@ -242,8 +251,31 @@ services:
       - AUTO_UPDATE=true #optional
     # ports:
     #   - 9117:9117
-    network_mode: 'service:vpn'
+    # network_mode: 'service:vpn'
     restart: unless-stopped
+
+  cache:
+    image: redis:7-alpine
+    container_name: cache
+    restart: always
+    # network_mode: 'service:vpn'
+    ports:
+      - '6379:6379'
+    command: redis-server --save 20 1 --loglevel warning
+    volumes:
+      - cache:/data
+    networks:
+      - proxy
+      - mediaServer
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: '500m'
+
+volumes:
+  cache:
+    driver: local
 
 networks:
   proxy:

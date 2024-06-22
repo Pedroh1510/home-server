@@ -1,0 +1,35 @@
+---
+services:
+  obsidian:
+    image: lscr.io/linuxserver/obsidian:latest
+    container_name: obsidian
+    security_opt:
+      - seccomp:unconfined #optional
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${STORAGE}/obsidian/config:/config
+    # ports:
+    #   - 3000:3000
+    #   - 3001:3001
+    # devices:
+    #   - /dev/dri:/dev/dri #optional
+    shm_size: '1gb'
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.obsidian-secure.entrypoints=websecure
+      - traefik.http.routers.obsidian-secure.rule=Host(`obsidian.${DOMAIN}`)
+      - traefik.http.routers.obsidian-secure.tls=true
+      - traefik.http.routers.obsidian-secure.tls.certresolver=http
+      - traefik.http.routers.obsidian-secure.service=obsidian
+      - traefik.http.services.obsidian.loadbalancer.server.port=3001
+      - traefik.http.services.obsidian.loadbalancer.server.scheme=https
+    restart: unless-stopped
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    external: true
