@@ -17,7 +17,7 @@ services:
     volumes:
       - cache:/data
     networks:
-      - proxy
+      - cache
     deploy:
       resources:
         limits:
