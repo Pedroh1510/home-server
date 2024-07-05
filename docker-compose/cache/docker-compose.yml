@@ -3,6 +3,9 @@ networks:
   cache:
     external: true
 
+volumes:
+  cache:
+
 services:
   cache:
     image: redis:7-alpine
