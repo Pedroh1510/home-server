@@ -28,6 +28,36 @@ services:
       retries: 10
       start_period: 10m
       timeout: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.8'
+          memory: '800m'
+    networks:
+      - proxy
+
+  snapdrop:
+    image: lscr.io/linuxserver/snapdrop:latest
+    container_name: snapdrop
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${STORAGE}/snapdrop/config:/config
+    # ports:
+    #   - 80:80
+    #   - 443:443
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.snapdrop-secure.entrypoints=websecure
+      - traefik.http.routers.snapdrop-secure.rule=Host(`drop.${DOMAIN}`)
+      - traefik.http.routers.snapdrop-secure.tls=true
+      - traefik.http.routers.snapdrop-secure.tls.certresolver=http
+      - traefik.http.routers.snapdrop-secure.service=snapdrop
+      - traefik.http.services.snapdrop.loadbalancer.server.port=443
+      - traefik.http.services.snapdrop.loadbalancer.server.scheme=https
     networks:
       - proxy
 

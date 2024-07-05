@@ -1,8 +1,55 @@
 ---
+networks:
+  proxy:
+    external: true
+
 services:
-  openspeedtest:
-    image: openspeedtest/latest
+  librespeed:
+    container_name: librespeed
+    image: ghcr.io/librespeed/speedtest:latest
     restart: unless-stopped
-    container_name: openspeedtest
+    environment:
+      MODE: standalone
+      TITLE: 'LibreSpeed'
+      TELEMETRY: 'false'
+      ENABLE_ID_OBFUSCATION: 'false'
+      REDACT_IP_ADDRESSES: 'false'
+      DISABLE_IPINFO: 'true'
+      DISTANCE: 'km'
+      WEBPORT: 3066
     ports:
-      - 3010:3000
+      - 3066:3066
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.librespeed.rule=Host(`librespeed.${DOMAIN}`)
+      - traefik.http.routers.librespeed.entrypoints=websecure
+      - traefik.http.routers.librespeed.tls=true
+      - traefik.http.services.librespeed.loadbalancer.server.port=3066
+    networks:
+      - proxy
+  speedtest-tracker:
+    image: lscr.io/linuxserver/speedtest-tracker:latest
+    container_name: speedtest-tracker
+    # ports:
+    #     - 8105:80
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+      - DISPLAY_TIMEZONE=${TZ}
+      - DB_CONNECTION=sqlite
+      - PUBLIC_DASHBOARD=true
+      - SPEEDTEST_SCHEDULE=*/30 * * * *
+      - APP_URL=speedtest.${DOMAIN}
+      - APP_KEY=${APP_KEY}
+    volumes:
+      - ${STORAGE}/speedtest:/config
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.speedtest.rule=Host(`speedtest.${DOMAIN}`)
+      - traefik.http.routers.speedtest.entrypoints=websecure
+      - traefik.http.routers.speedtest.tls=true
+      - traefik.http.services.speedtest.loadbalancer.server.port=80
+    networks:
+      - proxy

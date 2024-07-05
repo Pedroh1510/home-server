@@ -1,0 +1,53 @@
+---
+networks:
+  proxy:
+    external: true
+  influx:
+
+services:
+  influxdb:
+    image: influxdb:2-alpine
+    container_name: influxdb
+    restart: always
+    # ports:
+    #   - '8086:8086'
+    volumes:
+      - ${STORAGE}/influx/influxdb:/var/lib/influxdb2
+      - ${STORAGE}/influx/config:/etc/influxdb
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.influxdb.rule=Host(`influxdb.${DOMAIN}`)
+      - traefik.http.routers.influxdb.entrypoints=websecure
+      - traefik.http.routers.influxdb.tls=true
+      - traefik.http.services.influxdb.loadbalancer.server.port=8086
+      - traefik.docker.network=proxy
+    networks:
+      - proxy
+      - influx
+
+  telegraf:
+    image: telegraf
+    container_name: telegraf
+    restart: always
+    user: telegraf:992
+    privileged: true
+    # user: root
+    hostname: homelab
+    # privileged: true
+    # command: apt-get update && apt-get install -y smartmontools lm-sensors && telegraf
+    volumes:
+      - ${STORAGE}/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro # - /dev/sda:/dev/sda:rw
+      - /proc:/host/proc:ro
+      - /var/run/utmp:/var/run/utmp:ro
+      - /dev:/dev:ro
+      - /srv:/srv:ro
+    environment:
+      - HOST_PROC=/host/proc
+      - HOST_PROC_MOUNTINFO=/proc/1
+    depends_on:
+      - influxdb
+    # ports:
+    # - '8125:8125'
+    networks:
+      - influx

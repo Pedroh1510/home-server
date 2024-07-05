@@ -1,0 +1,40 @@
+---
+networks:
+  proxy:
+    external: true
+  grafana:
+    external: true
+
+services:
+  grafana:
+    image: grafana/grafana:10.4.5
+    container_name: grafana
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    user: 472:1000
+    # ports:
+    #   - 3000:3000
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.grafana.rule=Host(`grafana.${DOMAIN}`)
+      - traefik.http.routers.grafana.entrypoints=websecure
+      - traefik.http.routers.grafana.tls=true
+      - traefik.http.services.grafana.loadbalancer.server.port=3000
+      - traefik.docker.network=proxy
+    volumes:
+      - ${STORAGE}/grafana/data/:/var/lib/grafana
+    networks:
+      - proxy
+
+  loki:
+    image: grafana/loki
+    container_name: loki
+    restart: unless-stopped
+    # ports:
+    #   - '3100:3100'
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ${STORAGE}/config/loki/loki.yml:/etc/loki/local-config.yaml
+    networks:
+      - grafana
