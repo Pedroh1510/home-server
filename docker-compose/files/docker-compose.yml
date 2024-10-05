@@ -18,10 +18,10 @@ services:
       - traefik.http.routers.nextcloud-secure.entrypoints=websecure
       - traefik.http.routers.nextcloud-secure.rule=Host(`nextcloud.${DOMAIN}`)
       - traefik.http.routers.nextcloud-secure.tls=true
-      - traefik.http.routers.nextcloud-secure.tls.certresolver=http
-      - traefik.http.routers.nextcloud-secure.service=nextcloud
+      # - traefik.http.routers.nextcloud-secure.tls.certresolver=http
+      # - traefik.http.routers.nextcloud-secure.service=nextcloud
       - traefik.http.services.nextcloud.loadbalancer.server.port=443
-      - traefik.http.services.nextcloud.loadbalancer.server.scheme=https
+      # - traefik.http.services.nextcloud.loadbalancer.server.scheme=https
     healthcheck:
       test: curl --insecure --fail "https://localhost:443/login" || exit 1
       interval: 2m
@@ -45,19 +45,40 @@ services:
       - TZ=${TZ}
     volumes:
       - ${STORAGE}/snapdrop/config:/config
-    # ports:
-    #   - 80:80
-    #   - 443:443
+    ports:
+      - 9111:80
+      - 9112:443
     restart: unless-stopped
     labels:
       - traefik.enable=true
       - traefik.http.routers.snapdrop-secure.entrypoints=websecure
       - traefik.http.routers.snapdrop-secure.rule=Host(`drop.${DOMAIN}`)
       - traefik.http.routers.snapdrop-secure.tls=true
-      - traefik.http.routers.snapdrop-secure.tls.certresolver=http
-      - traefik.http.routers.snapdrop-secure.service=snapdrop
+      # - traefik.http.routers.snapdrop-secure.tls.certresolver=http
+      # - traefik.http.routers.snapdrop-secure.service=snapdrop
       - traefik.http.services.snapdrop.loadbalancer.server.port=443
-      - traefik.http.services.snapdrop.loadbalancer.server.scheme=https
+      # - traefik.http.services.snapdrop.loadbalancer.server.scheme=https
+    networks:
+      - proxy
+
+  filebrowser:
+    image: filebrowser/filebrowser:s6
+    container_name: filebrowser
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${STORAGE}/filebrowser/database:/database
+      - ${STORAGE}/filebrowser/config:/config
+      - /srv:/srv
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.filebrowser-secure.entrypoints=websecure
+      - traefik.http.routers.filebrowser-secure.rule=Host(`drop.${DOMAIN}`)
+      - traefik.http.routers.filebrowser-secure.tls=true
+      - traefik.http.services.filebrowser.loadbalancer.server.port=80
     networks:
       - proxy
 
