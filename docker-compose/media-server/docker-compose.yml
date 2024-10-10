@@ -84,6 +84,7 @@ services:
       - ${DATA}/movies:/data/movies
       - ${DATA}/tvseries:/data/tvshows
       - ${DATA}/music:/data/music
+      - ${DATA}/mangas:/data/mangas
       - ${DATA}/downloader/downloads:/downloaders
     ports:
       - 8096:8096
