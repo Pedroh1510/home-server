@@ -1,0 +1,38 @@
+---
+networks:
+  cache:
+    external: true
+  proxy:
+    external: true
+  database:
+    external: true
+
+services:
+  kaizoku:
+    container_name: kaizoku
+    image: ghcr.io/oae/kaizoku:latest
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - KAIZOKU_PORT=${KAIZOKU_PORT}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    restart: on-failure
+    volumes:
+      - ${STORAGE}/mangas:/data
+      - ${DATA}/kaizoku:/config
+    ports:
+      - '3000:${KAIZOKU_PORT}'
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.kaizoku.rule=Host(`kaizoku.${DOMAIN}`)
+      - traefik.http.routers.kaizoku.entrypoints=websecure
+      - traefik.http.routers.kaizoku.tls=true
+      - traefik.http.services.kaizoku.loadbalancer.server.port=${KAIZOKU_PORT}
+      - traefik.docker.network=proxy
+    networks:
+      - cache
+      - proxy
+      - database
