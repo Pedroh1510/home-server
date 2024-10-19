@@ -28,6 +28,9 @@ services:
   telegraf:
     image: telegraf
     container_name: telegraf
+    build:
+      context: .
+      dockerfile: Dockerfile.telegraf
     restart: always
     user: telegraf:992
     privileged: true
