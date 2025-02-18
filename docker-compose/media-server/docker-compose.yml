@@ -111,8 +111,8 @@ services:
       - ${SSD}/lidarr:/config
       - ${DATA}/downloads:/downloads
       - ${DATA}/music:/music
-    # ports:
-    #   - 8686:8686
+    ports:
+      - 8686:8686
     restart: unless-stopped
     labels:
       - traefik.enable=true
