@@ -37,8 +37,8 @@ services:
       - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
       - SERVER_COUNTRIES=${SERVER_COUNTRIES}
     restart: unless-stopped
-    ports:
-      - 8080:8080
+    # ports:
+    #   - 8080:8080
     labels:
       - traefik.enable=true
       - traefik.http.routers.gluetun.rule=Host(`qbittorrent.${DOMAIN}`)
